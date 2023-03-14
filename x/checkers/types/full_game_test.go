@@ -1,6 +1,7 @@
 package types_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/bekauz/checkers/x/checkers/rules"
@@ -62,4 +63,36 @@ func TestGetWrongAddressRed(t *testing.T) {
 	require.EqualError(t, storedGame.Validate(), err.Error())
 }
 
-// TODO: tests for parsing a game, tampering check, wrong tamper, wrongly saved
+func TestParseGame(t *testing.T) {
+	storedGame := GetStoredGame1()
+	game, err := storedGame.ParseGame()
+	require.EqualValues(t, rules.New().Pieces, game.Pieces)
+	require.Nil(t, err)
+}
+
+func TestParseErrorGame(t *testing.T) {
+	storedGame := GetStoredGame1()
+	storedGame.Board = "ha"
+	game, err := storedGame.ParseGame()
+	require.EqualError(t, err, "game is not parseable: invalid board string: ha")
+	require.Nil(t, game)
+}
+
+func TestCheckCorrectTampering(t *testing.T) {
+	storedGame := GetStoredGame1()
+	// replace all black with red, technically correct
+	storedGame.Board = strings.Replace(storedGame.Board, "b", "r", 1)
+	game, err := storedGame.ParseGame()
+	require.NotEqualValues(t, rules.New().Pieces, game.Pieces)
+	require.Nil(t, err)
+}
+
+func TestCheckTampering(t *testing.T) {
+	storedGame := GetStoredGame1()
+	// replace black with green
+	storedGame.Board = strings.Replace(storedGame.Board, "b", "g", 1)
+	game, err := storedGame.ParseGame()
+	require.Nil(t, game)
+	require.EqualError(t, err, "game is not parseable: invalid board, invalid piece at 1, 0")
+	require.EqualError(t, storedGame.Validate(), err.Error())
+}
