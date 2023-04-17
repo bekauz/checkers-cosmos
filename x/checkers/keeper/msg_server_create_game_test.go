@@ -41,3 +41,27 @@ func TestCreateGame(t *testing.T) {
 		GameIndex: "2",
 	}, *createResponse2)
 }
+
+func TestCreateGameHasSaved(t *testing.T) {
+	msgServer, keeper, context := setupMsgServerCreateGame(t)
+	msgServer.CreateGame(context, &types.MsgCreateGame{
+		Creator: testutil.Alice,
+		Black:   testutil.Bob,
+		Red:     testutil.Carol,
+	})
+	systemInfo, found := keeper.GetSystemInfo(sdk.UnwrapSDKContext(context))
+	require.True(t, found)
+	require.EqualValues(t, types.SystemInfo{
+		NextId: 2,
+	}, systemInfo)
+
+	game, found := keeper.GetStoredGame(sdk.UnwrapSDKContext(context), "1")
+	require.True(t, found)
+	require.EqualValues(t, types.StoredGame{
+		Index: "1",
+		Board: "*b*b*b*b|b*b*b*b*|*b*b*b*b|********|********|r*r*r*r*|*r*r*r*r|r*r*r*r*",
+		Turn:  "b",
+		Black: testutil.Bob,
+		Red:   testutil.Carol,
+	}, game)
+}
