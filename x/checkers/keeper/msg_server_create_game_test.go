@@ -65,3 +65,60 @@ func TestCreateGameHasSaved(t *testing.T) {
 		Red:   testutil.Carol,
 	}, game)
 }
+
+func TestCreateMultipleGames(t *testing.T) {
+	msgServer, keeper, context := setupMsgServerCreateGame(t)
+
+	// create multiple games
+	msgServer.CreateGame(context, &types.MsgCreateGame{
+		Creator: testutil.Alice,
+		Black:   testutil.Bob,
+		Red:     testutil.Carol,
+	})
+	msgServer.CreateGame(context, &types.MsgCreateGame{
+		Creator: testutil.Alice,
+		Black:   testutil.Carol,
+		Red:     testutil.Bob,
+	})
+	msgServer.CreateGame(context, &types.MsgCreateGame{
+		Creator: testutil.Bob,
+		Black:   testutil.Alice,
+		Red:     testutil.Carol,
+	})
+
+	systemInfo, found := keeper.GetSystemInfo(sdk.UnwrapSDKContext(context))
+	require.True(t, found)
+	require.EqualValues(t, types.SystemInfo{
+		NextId: 4,
+	}, systemInfo)
+
+	game1, found := keeper.GetStoredGame(sdk.UnwrapSDKContext(context), "1")
+	require.True(t, found)
+	require.EqualValues(t, types.StoredGame{
+		Index: "1",
+		Board: "*b*b*b*b|b*b*b*b*|*b*b*b*b|********|********|r*r*r*r*|*r*r*r*r|r*r*r*r*",
+		Turn:  "b",
+		Black: testutil.Bob,
+		Red:   testutil.Carol,
+	}, game1)
+
+	game2, found := keeper.GetStoredGame(sdk.UnwrapSDKContext(context), "2")
+	require.True(t, found)
+	require.EqualValues(t, types.StoredGame{
+		Index: "2",
+		Board: "*b*b*b*b|b*b*b*b*|*b*b*b*b|********|********|r*r*r*r*|*r*r*r*r|r*r*r*r*",
+		Turn:  "b",
+		Black: testutil.Carol,
+		Red:   testutil.Bob,
+	}, game2)
+
+	game3, found := keeper.GetStoredGame(sdk.UnwrapSDKContext(context), "3")
+	require.True(t, found)
+	require.EqualValues(t, types.StoredGame{
+		Index: "3",
+		Board: "*b*b*b*b|b*b*b*b*|*b*b*b*b|********|********|r*r*r*r*|*r*r*r*r|r*r*r*r*",
+		Turn:  "b",
+		Black: testutil.Alice,
+		Red:   testutil.Carol,
+	}, game3)
+}
