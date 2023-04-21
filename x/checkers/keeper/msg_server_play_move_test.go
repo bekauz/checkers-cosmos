@@ -157,5 +157,70 @@ func TestPlayMoveCapture(t *testing.T) {
 		CapturedY: 4,
 		Winner:    "*",
 	}, playMoveResponse)
+}
 
+func TestPlayMoveEventEmitted(t *testing.T) {
+	msgServer, _, context := setupMsgServerWithOneGameForPlayMove(t)
+
+	msgServer.PlayMove(context, &types.MsgPlayMove{
+		Creator:   testutil.Bob,
+		GameIndex: "1",
+		FromX:     1,
+		FromY:     2,
+		ToX:       2,
+		ToY:       3,
+	})
+
+	ctx := sdk.UnwrapSDKContext(context)
+	require.NotNil(t, ctx)
+	// grab the resulting events after creating a game
+	events := sdk.StringifyEvents(ctx.EventManager().ABCIEvents())
+	require.Len(t, events, 2) // created and playMove
+	event := events[0]
+	require.EqualValues(t, sdk.StringEvent{
+		Type: "move-played",
+		Attributes: []sdk.Attribute{
+			{Key: "captured-x", Value: "-1"},
+			{Key: "captured-y", Value: "-1"},
+			{Key: "creator", Value: testutil.Bob},
+			{Key: "game-index", Value: "1"},
+			{Key: "winner", Value: "*"},
+		},
+	}, event)
+}
+
+func TestPlayMoveMultipleEmittedEvents(t *testing.T) {
+	msgServer, _, context := setupMsgServerWithOneGameForPlayMove(t)
+
+	msgServer.PlayMove(context, &types.MsgPlayMove{
+		Creator:   testutil.Bob,
+		GameIndex: "1",
+		FromX:     1,
+		FromY:     2,
+		ToX:       2,
+		ToY:       3,
+	})
+	msgServer.PlayMove(context, &types.MsgPlayMove{
+		Creator:   testutil.Carol,
+		GameIndex: "1",
+		FromX:     0,
+		FromY:     5,
+		ToX:       1,
+		ToY:       4,
+	})
+
+	ctx := sdk.UnwrapSDKContext(context)
+	require.NotNil(t, ctx)
+	// grab the resulting events after creating a game
+	events := sdk.StringifyEvents(ctx.EventManager().ABCIEvents())
+	require.Len(t, events, 2) // created and playMove
+	event := events[0]
+	require.Equal(t, "move-played", event.Type)
+	require.EqualValues(t, []sdk.Attribute{
+		{Key: "captured-x", Value: "-1"},
+		{Key: "captured-y", Value: "-1"},
+		{Key: "creator", Value: testutil.Carol},
+		{Key: "game-index", Value: "1"},
+		{Key: "winner", Value: "*"},
+	}, event.Attributes[5:])
 }
